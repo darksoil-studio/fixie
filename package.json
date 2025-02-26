@@ -1,0 +1,26 @@
+{
+	"name": "fixie-dev",
+	"private": true,
+	"scripts": {
+		"start": "AGENTS=2 pnpm network",
+		"network": "pnpm build:happ && UI_PORT=8888 concurrently -k \"pnpm -F @darksoil-studio/fixie-zome start\" \"pnpm launch\" \"hc playground\" \"pnpm local-services\"",
+		"launch": "concurrently-repeat \"RUST_LOG=warn hc pilot workdir/fixie_test.happ --ui-port $UI_PORT\" $AGENTS",
+		"test": "pnpm build:happ && pnpm -F tests test",
+		"build:happ": "nix build -L .#fixie_test_happ.meta.debug -o workdir/fixie_test.happ"
+	},
+	"devDependencies": {
+		"@trivago/prettier-plugin-sort-imports": "^4.3.0",
+		"@eslint/js": "^9.0.0",
+		"concurrently": "^6.2.1",
+		"eslint": "^9.0.0",
+		"eslint-config-prettier": "^9.1.0",
+		"new-port-cli": "^1.0.0",
+		"prettier": "^3.2.5",
+		"typescript-eslint": "^8.0.0",
+		"typescript": "^5.4.5"
+	},
+	"type": "module",
+	"engines": {
+		"pnpm": ">=9.0.0"
+	}
+}

@@ -1,0 +1,17 @@
+---
+manifest_version: "1"
+name: fixie_test
+description: ~
+roles:   
+  - name: fixie_test
+    provisioning:
+      strategy: create
+      deferred: false
+    dna:
+      bundled: "./fixie_test.dna"
+      modifiers:
+        network_seed: ~
+        properties: ~
+        origin_time: ~
+      version: ~
+      clone_limit: 0

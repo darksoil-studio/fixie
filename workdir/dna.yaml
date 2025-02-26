@@ -1,0 +1,28 @@
+---
+manifest_version: "1"
+name: fixie_test
+integrity:
+  network_seed: ~
+  properties: ~
+  origin_time: 1676140846503210
+  zomes:
+    - name: fixie_integrity
+      hash: ~
+      bundled: "../target/wasm32-unknown-unknown/release/fixie_integrity.wasm"
+      dependencies: ~    
+    - name: profiles_integrity
+      hash: ~
+      bundled: <NIX PACKAGE>
+      dependencies: ~
+coordinator:
+  zomes:
+    - name: fixie
+      hash: ~
+      bundled: "../target/wasm32-unknown-unknown/release/fixie.wasm"
+      dependencies:
+        - name: fixie_integrity    
+    - name: profiles
+      hash: ~
+      bundled: <NIX PACKAGE>
+      dependencies:
+        - name: profiles_integrity
