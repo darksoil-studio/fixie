@@ -5891,16 +5891,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1740250675,
-        "narHash": "sha256-FhlptSTSFTUczihGCZmG5kG7qqRKiKXCmsi91mkh7XM=",
+        "lastModified": 1740649200,
+        "narHash": "sha256-BohL9pb8AutSi3gLX7xGE0a2Aga9cwfaSUnIT9naMz4=",
         "owner": "darksoil-studio",
         "repo": "tnesh-stack",
-        "rev": "8b1f9c293c133bc28667187e4c61a33a571c5b54",
+        "rev": "f67767a781b78e99c415baf99854d645195b0d35",
         "type": "github"
       },
       "original": {
         "owner": "darksoil-studio",
-        "ref": "main-0.4",
+        "ref": "develop",
         "repo": "tnesh-stack",
         "type": "github"
       }

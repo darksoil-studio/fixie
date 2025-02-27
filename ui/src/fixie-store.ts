@@ -1,21 +1,27 @@
-import { 
-  collectionSignal, 
-  liveLinksSignal, 
-  deletedLinksSignal, 
+import { BugReport } from "./types.js";
+
+import { ActionHash, AgentPubKey, EntryHash, NewEntryAction, Record } from "@holochain/client";
+import {
   allRevisionsOfEntrySignal,
-  latestVersionOfEntrySignal, 
-  immutableEntrySignal, 
-  deletesForEntrySignal, 
   AsyncComputed,
+  collectionSignal,
+  deletedLinksSignal,
+  deletesForEntrySignal,
+  immutableEntrySignal,
+  latestVersionOfEntrySignal,
+  liveLinksSignal,
   pipe,
 } from "@tnesh-stack/signals";
-import { slice, HashType, retype, EntryRecord, MemoHoloHashMap } from "@tnesh-stack/utils";
-import { NewEntryAction, Record, ActionHash, EntryHash, AgentPubKey } from '@holochain/client';
+import { EntryRecord, HashType, MemoHoloHashMap, retype, slice } from "@tnesh-stack/utils";
 
-import { FixieClient } from './fixie-client.js';
+import { FixieClient } from "./fixie-client.js";
 
 export class FixieStore {
-
   constructor(public client: FixieClient) {}
-  
+
+  /** Bug Report */
+
+  bugReports = new MemoHoloHashMap((bugReportHash: ActionHash) => ({
+    entry: immutableEntrySignal(() => this.client.getBugReport(bugReportHash)),
+  }));
 }
