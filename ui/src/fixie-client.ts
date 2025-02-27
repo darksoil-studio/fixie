@@ -73,4 +73,10 @@ export class FixieClient extends ZomeClient<FixieSignal> {
     });
     return new EntryRecord(record);
   }
+
+  /** Open Issues */
+
+  async getOpenIssues(): Promise<Array<Link>> {
+    return this.callZome("get_open_issues", undefined);
+  }
 }

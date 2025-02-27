@@ -7,6 +7,13 @@ pub fn create_issue(issue: Issue) -> ExternResult<Record> {
     let record = get(issue_hash.clone(), GetOptions::default())?.ok_or(wasm_error!(
         WasmErrorInner::Guest("Could not find the newly created Issue".to_string())
     ))?;
+    let path = Path::from("open_issues");
+    create_link(
+        path.path_entry_hash()?,
+        issue_hash.clone(),
+        LinkTypes::OpenIssues,
+        (),
+    )?;
     Ok(record)
 }
 

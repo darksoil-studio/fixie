@@ -44,4 +44,15 @@ export class FixieStore {
     original: immutableEntrySignal(() => this.client.getOriginalIssue(issueHash)),
     allRevisions: allRevisionsOfEntrySignal(this.client, () => this.client.getAllRevisionsForIssue(issueHash)),
   }));
+
+  /** Open Issues */
+
+  openIssues = pipe(
+    collectionSignal(
+      this.client,
+      () => this.client.getOpenIssues(),
+      "OpenIssues",
+    ),
+    openIssues => slice(this.issues, openIssues.map(l => l.target)),
+  );
 }

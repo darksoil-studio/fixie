@@ -18,6 +18,7 @@ pub enum EntryTypes {
 pub enum LinkTypes {
     UntriagedBugReports,
     IssueUpdates,
+    OpenIssues,
 }
 
 // Validation you perform during the genesis process. Nobody else on the network performs it, only you.
@@ -195,6 +196,9 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             LinkTypes::IssueUpdates => {
                 validate_create_link_issue_updates(action, base_address, target_address, tag)
             }
+            LinkTypes::OpenIssues => {
+                validate_create_link_open_issues(action, base_address, target_address, tag)
+            }
         },
         FlatOp::RegisterDeleteLink {
             link_type,
@@ -212,6 +216,13 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 tag,
             ),
             LinkTypes::IssueUpdates => validate_delete_link_issue_updates(
+                action,
+                original_action,
+                base_address,
+                target_address,
+                tag,
+            ),
+            LinkTypes::OpenIssues => validate_delete_link_open_issues(
                 action,
                 original_action,
                 base_address,
@@ -398,6 +409,9 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         target_address,
                         tag,
                     ),
+                    LinkTypes::OpenIssues => {
+                        validate_create_link_open_issues(action, base_address, target_address, tag)
+                    }
                 },
                 // Complementary validation to the `RegisterDeleteLink` Op, in which the record itself is validated
                 // If you want to optimize performance, you can remove the validation for an entry type here and keep it in `RegisterDeleteLink`
@@ -437,6 +451,13 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                             )
                         }
                         LinkTypes::IssueUpdates => validate_delete_link_issue_updates(
+                            action,
+                            create_link.clone(),
+                            base_address,
+                            create_link.target_address,
+                            create_link.tag,
+                        ),
+                        LinkTypes::OpenIssues => validate_delete_link_open_issues(
                             action,
                             create_link.clone(),
                             base_address,
