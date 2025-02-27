@@ -1,3 +1,5 @@
+import { Issue } from "./types.js";
+
 import { BugReport } from "./types.js";
 
 import {
@@ -75,6 +77,53 @@ export class FixieZomeMock extends ZomeMock implements AppClient {
       create_link_hash: await fakeActionHash(),
     })));
   }
+  /** Issue */
+  issues = new HoloHashMap<ActionHash, {
+    deletes: Array<SignedActionHashed<Delete>>;
+    revisions: Array<Record>;
+  }>();
+
+  async create_issue(issue: Issue): Promise<Record> {
+    const entryHash = hash(issue, HashType.ENTRY);
+    const record = await fakeRecord(await fakeCreateAction(entryHash), fakeEntry(issue));
+
+    this.issues.set(record.signed_action.hashed.hash, {
+      deletes: [],
+      revisions: [record],
+    });
+
+    return record;
+  }
+
+  async get_latest_issue(issueHash: ActionHash): Promise<Record | undefined> {
+    const issue = this.issues.get(issueHash);
+    return issue ? issue.revisions[issue.revisions.length - 1] : undefined;
+  }
+
+  async get_all_revisions_for_issue(issueHash: ActionHash): Promise<Record[] | undefined> {
+    const issue = this.issues.get(issueHash);
+    return issue ? issue.revisions : undefined;
+  }
+
+  async get_original_issue(issueHash: ActionHash): Promise<Record | undefined> {
+    const issue = this.issues.get(issueHash);
+    return issue ? issue.revisions[0] : undefined;
+  }
+
+  async update_issue(
+    input: { original_issue_hash: ActionHash; previous_issue_hash: ActionHash; updated_issue: Issue },
+  ): Promise<Record> {
+    const record = await fakeRecord(
+      await fakeUpdateEntry(input.previous_issue_hash, undefined, undefined, fakeEntry(input.updated_issue)),
+      fakeEntry(input.updated_issue),
+    );
+
+    this.issues.get(input.original_issue_hash).revisions.push(record);
+
+    const issue = input.updated_issue;
+
+    return record;
+  }
 }
 
 export async function sampleBugReport(
@@ -91,5 +140,16 @@ export async function sampleBugReport(
       happ_version: "Lorem ipsum 2",
     },
     ...partialBugReport,
+  };
+}
+
+export async function sampleIssue(client: FixieClient, partialIssue: Partial<Issue> = {}): Promise<Issue> {
+  return {
+    ...{
+      title: "Lorem ipsum 2",
+      description: "Lorem ipsum 2",
+      issue_status: { type: "Open" },
+    },
+    ...partialIssue,
   };
 }

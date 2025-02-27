@@ -1,3 +1,5 @@
+pub mod issue;
+pub use issue::*;
 pub mod bug_report;
 pub use bug_report::*;
 use hdi::prelude::*;
@@ -8,12 +10,14 @@ use hdi::prelude::*;
 #[unit_enum(UnitEntryTypes)]
 pub enum EntryTypes {
     BugReport(BugReport),
+    Issue(Issue),
 }
 
 #[derive(Serialize, Deserialize)]
 #[hdk_link_types]
 pub enum LinkTypes {
     UntriagedBugReports,
+    IssueUpdates,
 }
 
 // Validation you perform during the genesis process. Nobody else on the network performs it, only you.
@@ -58,12 +62,18 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 EntryTypes::BugReport(bug_report) => {
                     validate_create_bug_report(EntryCreationAction::Create(action), bug_report)
                 }
+                EntryTypes::Issue(issue) => {
+                    validate_create_issue(EntryCreationAction::Create(action), issue)
+                }
             },
             OpEntry::UpdateEntry {
                 app_entry, action, ..
             } => match app_entry {
                 EntryTypes::BugReport(bug_report) => {
                     validate_create_bug_report(EntryCreationAction::Update(action), bug_report)
+                }
+                EntryTypes::Issue(issue) => {
+                    validate_create_issue(EntryCreationAction::Update(action), issue)
                 }
             },
             _ => Ok(ValidateCallbackResult::Valid),
@@ -82,6 +92,19 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     }
                 };
                 match app_entry {
+                    EntryTypes::Issue(issue) => {
+                        let original_app_entry =
+                            must_get_valid_record(action.clone().original_action_address)?;
+                        let original_issue = match Issue::try_from(original_app_entry) {
+                            Ok(entry) => entry,
+                            Err(e) => {
+                                return Ok(ValidateCallbackResult::Invalid(format!(
+                                    "Expected to get Issue from Record: {e:?}"
+                                )));
+                            }
+                        };
+                        validate_update_issue(action, issue, original_create_action, original_issue)
+                    }
                     EntryTypes::BugReport(bug_report) => {
                         let original_app_entry =
                             must_get_valid_record(action.clone().original_action_address)?;
@@ -144,6 +167,11 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 }
             };
             match original_app_entry {
+                EntryTypes::Issue(original_issue) => validate_delete_issue(
+                    delete_entry.clone().action,
+                    original_action,
+                    original_issue,
+                ),
                 EntryTypes::BugReport(original_bug_report) => validate_delete_bug_report(
                     delete_entry.clone().action,
                     original_action,
@@ -164,6 +192,9 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 target_address,
                 tag,
             ),
+            LinkTypes::IssueUpdates => {
+                validate_create_link_issue_updates(action, base_address, target_address, tag)
+            }
         },
         FlatOp::RegisterDeleteLink {
             link_type,
@@ -180,6 +211,13 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 target_address,
                 tag,
             ),
+            LinkTypes::IssueUpdates => validate_delete_link_issue_updates(
+                action,
+                original_action,
+                base_address,
+                target_address,
+                tag,
+            ),
         },
         FlatOp::StoreRecord(store_record) => {
             match store_record {
@@ -189,6 +227,9 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                 OpRecord::CreateEntry { app_entry, action } => match app_entry {
                     EntryTypes::BugReport(bug_report) => {
                         validate_create_bug_report(EntryCreationAction::Create(action), bug_report)
+                    }
+                    EntryTypes::Issue(issue) => {
+                        validate_create_issue(EntryCreationAction::Create(action), issue)
                     }
                 },
                 // Complementary validation to the `RegisterUpdate` Op, in which the record itself is validated
@@ -239,6 +280,37 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                                     bug_report,
                                     original_action,
                                     original_bug_report,
+                                )
+                            } else {
+                                Ok(result)
+                            }
+                        }
+                        EntryTypes::Issue(issue) => {
+                            let result = validate_create_issue(
+                                EntryCreationAction::Update(action.clone()),
+                                issue.clone(),
+                            )?;
+                            if let ValidateCallbackResult::Valid = result {
+                                let original_issue: Option<Issue> = original_record
+                                    .entry()
+                                    .to_app_option()
+                                    .map_err(|e| wasm_error!(e))?;
+                                let original_issue = match original_issue {
+                                    Some(issue) => issue,
+                                    None => {
+                                        return Ok(
+                                            ValidateCallbackResult::Invalid(
+                                                "The updated entry type must be the same as the original entry type"
+                                                    .to_string(),
+                                            ),
+                                        );
+                                    }
+                                };
+                                validate_update_issue(
+                                    action,
+                                    issue,
+                                    original_action,
+                                    original_issue,
                                 )
                             } else {
                                 Ok(result)
@@ -299,6 +371,9 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                         EntryTypes::BugReport(original_bug_report) => {
                             validate_delete_bug_report(action, original_action, original_bug_report)
                         }
+                        EntryTypes::Issue(original_issue) => {
+                            validate_delete_issue(action, original_action, original_issue)
+                        }
                     }
                 }
                 // Complementary validation to the `RegisterCreateLink` Op, in which the record itself is validated
@@ -312,6 +387,12 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     action,
                 } => match link_type {
                     LinkTypes::UntriagedBugReports => validate_create_link_untriaged_bug_reports(
+                        action,
+                        base_address,
+                        target_address,
+                        tag,
+                    ),
+                    LinkTypes::IssueUpdates => validate_create_link_issue_updates(
                         action,
                         base_address,
                         target_address,
@@ -355,6 +436,13 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                                 create_link.tag,
                             )
                         }
+                        LinkTypes::IssueUpdates => validate_delete_link_issue_updates(
+                            action,
+                            create_link.clone(),
+                            base_address,
+                            create_link.target_address,
+                            create_link.tag,
+                        ),
                     }
                 }
                 OpRecord::CreatePrivateEntry { .. } => Ok(ValidateCallbackResult::Valid),

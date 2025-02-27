@@ -1,3 +1,5 @@
+import { Issue } from "./types.js";
+
 import { BugReport } from "./types.js";
 
 import { ActionHash, AgentPubKey, EntryHash, NewEntryAction, Record } from "@holochain/client";
@@ -35,4 +37,11 @@ export class FixieStore {
     ),
     untriagedBugReports => slice(this.bugReports, untriagedBugReports.map(l => l.target)),
   );
+  /** Issue */
+
+  issues = new MemoHoloHashMap((issueHash: ActionHash) => ({
+    latestVersion: latestVersionOfEntrySignal(this.client, () => this.client.getLatestIssue(issueHash)),
+    original: immutableEntrySignal(() => this.client.getOriginalIssue(issueHash)),
+    allRevisions: allRevisionsOfEntrySignal(this.client, () => this.client.getAllRevisionsForIssue(issueHash)),
+  }));
 }

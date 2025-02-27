@@ -30,3 +30,24 @@ pub async fn create_bug_report(
     let record: Record = conductor.call(zome, "create_bug_report", bug_report).await;
     record
 }
+
+pub async fn sample_issue_1(conductor: &SweetConductor, zome: &SweetZome) -> Issue {
+    Issue {
+        title: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.".to_string(),
+        description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.".to_string(),
+        issue_status: IssueStatus::Open,
+    }
+}
+
+pub async fn sample_issue_2(conductor: &SweetConductor, zome: &SweetZome) -> Issue {
+    Issue {
+        title: "Lorem ipsum 2".to_string(),
+        description: "Lorem ipsum 2".to_string(),
+        issue_status: IssueStatus::Fixed,
+    }
+}
+
+pub async fn create_issue(conductor: &SweetConductor, zome: &SweetZome, issue: Issue) -> Record {
+    let record: Record = conductor.call(zome, "create_issue", issue).await;
+    record
+}

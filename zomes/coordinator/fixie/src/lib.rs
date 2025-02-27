@@ -1,4 +1,5 @@
 pub mod bug_report;
+pub mod issue;
 pub mod untriaged_bug_reports;
 use fixie_integrity::*;
 use hdk::prelude::*;

@@ -15,7 +15,7 @@ import { ActionCommittedSignal } from "@tnesh-stack/utils";
 
 export type FixieSignal = ActionCommittedSignal<EntryTypes, LinkTypes>;
 
-export type EntryTypes = { type: "BugReport" } & BugReport;
+export type EntryTypes = ({ type: "Issue" } & Issue) | { type: "BugReport" } & BugReport;
 
 export type LinkTypes = string;
 
@@ -31,4 +31,19 @@ export interface BugReport {
   happ_specific_data: string | undefined;
 
   happ_version: string;
+}
+
+export interface IssueStatus {
+  type:
+    | "Open"
+    | "Fixed"
+    | "Closed";
+}
+
+export interface Issue {
+  title: string;
+
+  description: string;
+
+  issue_status: IssueStatus;
 }
