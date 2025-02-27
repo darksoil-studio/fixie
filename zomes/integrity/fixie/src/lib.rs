@@ -10,6 +10,12 @@ pub enum EntryTypes {
     BugReport(BugReport),
 }
 
+#[derive(Serialize, Deserialize)]
+#[hdk_link_types]
+pub enum LinkTypes {
+    UntriagedBugReports,
+}
+
 // Validation you perform during the genesis process. Nobody else on the network performs it, only you.
 // There *is no* access to network calls in this callback
 #[hdk_extern]
@@ -28,7 +34,6 @@ pub fn validate_agent_joining(
 
 // This is the unified validation callback for all entries and link types in this integrity zome
 // Below is a match template for all of the variants of `DHT Ops` and entry and link types
-//
 // Holochain has already performed the following validation for you:
 // - The action signature matches on the hash of its content and is signed by its author
 // - The previous action exists, has a lower timestamp than the new action, and incremented sequence number
@@ -44,11 +49,10 @@ pub fn validate_agent_joining(
 // - If the `Op` is a delete link, the original action exists and is a `CreateLink` action
 // - Link tags don't exceed the maximum tag size (currently 1KB)
 // - Countersigned entries include an action from each required signer
-//
 // You can read more about validation here: https://docs.rs/hdi/latest/hdi/index.html#data-validation
 #[hdk_extern]
 pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
-    match op.flattened::<EntryTypes, ()>()? {
+    match op.flattened::<EntryTypes, LinkTypes>()? {
         FlatOp::StoreEntry(store_entry) => match store_entry {
             OpEntry::CreateEntry { app_entry, action } => match app_entry {
                 EntryTypes::BugReport(bug_report) => {
@@ -153,9 +157,14 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             target_address,
             tag,
             action,
-        } => Ok(ValidateCallbackResult::Invalid(
-            "There are no link types in this integrity zome".to_string(),
-        )),
+        } => match link_type {
+            LinkTypes::UntriagedBugReports => validate_create_link_untriaged_bug_reports(
+                action,
+                base_address,
+                target_address,
+                tag,
+            ),
+        },
         FlatOp::RegisterDeleteLink {
             link_type,
             base_address,
@@ -163,9 +172,15 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
             tag,
             original_action,
             action,
-        } => Ok(ValidateCallbackResult::Invalid(
-            "There are no link types in this integrity zome".to_string(),
-        )),
+        } => match link_type {
+            LinkTypes::UntriagedBugReports => validate_delete_link_untriaged_bug_reports(
+                action,
+                original_action,
+                base_address,
+                target_address,
+                tag,
+            ),
+        },
         FlatOp::StoreRecord(store_record) => {
             match store_record {
                 // Complementary validation to the `StoreEntry` Op, in which the record itself is validated
@@ -295,9 +310,14 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     tag,
                     link_type,
                     action,
-                } => Ok(ValidateCallbackResult::Invalid(
-                    "There are no link types in this integrity zome".to_string(),
-                )),
+                } => match link_type {
+                    LinkTypes::UntriagedBugReports => validate_create_link_untriaged_bug_reports(
+                        action,
+                        base_address,
+                        target_address,
+                        tag,
+                    ),
+                },
                 // Complementary validation to the `RegisterDeleteLink` Op, in which the record itself is validated
                 // If you want to optimize performance, you can remove the validation for an entry type here and keep it in `RegisterDeleteLink`
                 // Notice that doing so will cause `must_get_valid_record` for this record to return a valid record even if the `RegisterDeleteLink` validation failed
@@ -305,9 +325,38 @@ pub fn validate(op: Op) -> ExternResult<ValidateCallbackResult> {
                     original_action_hash,
                     base_address,
                     action,
-                } => Ok(ValidateCallbackResult::Invalid(
-                    "There are no link types in this integrity zome".to_string(),
-                )),
+                } => {
+                    let record = must_get_valid_record(original_action_hash)?;
+                    let create_link = match record.action() {
+                        Action::CreateLink(create_link) => create_link.clone(),
+                        _ => {
+                            return Ok(ValidateCallbackResult::Invalid(
+                                "The action that a DeleteLink deletes must be a CreateLink"
+                                    .to_string(),
+                            ));
+                        }
+                    };
+                    let link_type = match LinkTypes::from_type(
+                        create_link.zome_index,
+                        create_link.link_type,
+                    )? {
+                        Some(lt) => lt,
+                        None => {
+                            return Ok(ValidateCallbackResult::Valid);
+                        }
+                    };
+                    match link_type {
+                        LinkTypes::UntriagedBugReports => {
+                            validate_delete_link_untriaged_bug_reports(
+                                action,
+                                create_link.clone(),
+                                base_address,
+                                create_link.target_address,
+                                create_link.tag,
+                            )
+                        }
+                    }
+                }
                 OpRecord::CreatePrivateEntry { .. } => Ok(ValidateCallbackResult::Valid),
                 OpRecord::UpdatePrivateEntry { .. } => Ok(ValidateCallbackResult::Valid),
                 OpRecord::CreateCapClaim { .. } => Ok(ValidateCallbackResult::Valid),

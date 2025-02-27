@@ -7,6 +7,13 @@ pub fn create_bug_report(bug_report: BugReport) -> ExternResult<Record> {
     let record = get(bug_report_hash.clone(), GetOptions::default())?.ok_or(wasm_error!(
         WasmErrorInner::Guest("Could not find the newly created BugReport".to_string())
     ))?;
+    let path = Path::from("untriaged_bug_reports");
+    create_link(
+        path.path_entry_hash()?,
+        bug_report_hash.clone(),
+        LinkTypes::UntriagedBugReports,
+        (),
+    )?;
     Ok(record)
 }
 

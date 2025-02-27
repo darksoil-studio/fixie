@@ -24,4 +24,15 @@ export class FixieStore {
   bugReports = new MemoHoloHashMap((bugReportHash: ActionHash) => ({
     entry: immutableEntrySignal(() => this.client.getBugReport(bugReportHash)),
   }));
+
+  /** Untriaged Bug Reports */
+
+  untriagedBugReports = pipe(
+    collectionSignal(
+      this.client,
+      () => this.client.getUntriagedBugReports(),
+      "UntriagedBugReports",
+    ),
+    untriagedBugReports => slice(this.bugReports, untriagedBugReports.map(l => l.target)),
+  );
 }

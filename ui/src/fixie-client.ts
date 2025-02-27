@@ -31,4 +31,10 @@ export class FixieClient extends ZomeClient<FixieSignal> {
     const record: Record = await this.callZome("get_bug_report", bugReportHash);
     return record ? new EntryRecord(record) : undefined;
   }
+
+  /** Untriaged Bug Reports */
+
+  async getUntriagedBugReports(): Promise<Array<Link>> {
+    return this.callZome("get_untriaged_bug_reports", undefined);
+  }
 }
